@@ -1,0 +1,15 @@
+target/
+!target/*.jar
+.git/
+.gitignore
+.idea/
+*.iml
+*.ipr
+*.iws
+.settings/
+.classpath
+.project
+*.log
+README.md
+Dockerfile
+docker-compose.yml
