@@ -32,3 +32,6 @@ out/
 Thumbs.db
 *.log
 *.tmp
+.env
+application-local.properties
+application-local.yml

@@ -24,7 +24,7 @@ public class AiService {
                            "Use the provided tools to search for events and check ticket quantities. " +
                            "Always base your answers on the data returned by the tools. " +
                            "Do not invent or hallucinate events or ticket prices.")
-            .defaultFunctions("searchEvents", "getTicketAvailability")
+            .defaultFunctions("searchEvents", "getTicketAvailability", "getUserBookings")
             .build();
     }
 

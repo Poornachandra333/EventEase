@@ -1,259 +1,94 @@
-# EventEase — Event Booking Platform
+# EventEase
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk" />
-  <img src="https://img.shields.io/badge/Spring_Boot-3.3.5-brightgreen?style=for-the-badge&logo=springboot" />
-  <img src="https://img.shields.io/badge/Apache_Kafka-3.x-black?style=for-the-badge&logo=apachekafka" />
-  <img src="https://img.shields.io/badge/Redis-7.x-red?style=for-the-badge&logo=redis" />
-  <img src="https://img.shields.io/badge/MySQL-8.0-blue?style=for-the-badge&logo=mysql" />
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker" />
-</p>
+EventEase is a robust, production-oriented event booking platform. It provides a secure backend API, a modern React frontend, and an intelligent AI assistant to help users discover events and manage their bookings.
 
-A **production-grade** event ticketing and booking platform built with Spring Boot 3.3.5 + Java 21.  
-Demonstrates real-world backend engineering patterns: event-driven architecture, distributed caching, circuit breakers, idempotent payments, rate limiting, and observability.
+## 🏗 Architecture & Tech Stack
 
----
+### Backend
+- **Java 21 & Spring Boot 3**
+- **Spring Security & JWT**: For authentication and Role-Based Access Control (RBAC).
+- **MySQL & Spring Data JPA**: Primary data persistence.
+- **Redis**: Caching layer for fast data retrieval.
+- **Kafka**: Event-driven architecture for notifications and asynchronous processing.
+- **Bucket4j**: Rate-limiting to prevent API abuse.
+- **Resilience4j**: Circuit breaker and retry mechanisms for fault tolerance (e.g., payment mock).
+- **Spring AI**: Integration with OpenAI for the intelligent EventEase Assistant.
+- **Actuator & Prometheus**: Observability and monitoring.
+- **Swagger/OpenAPI**: API documentation.
 
-## 🏗️ Architecture Overview
+### Frontend
+- **React 19 & React Router**: SPA architecture and routing.
+- **Vite**: Next-generation frontend tooling.
+- **Tailwind CSS v4**: Utility-first styling for a beautiful, responsive UI.
+- **Axios**: HTTP client for communicating with the backend APIs.
+- **Lucide React**: Modern iconography.
 
-```
-┌─────────────────────────────────────────────┐
-│               REST API Layer                │
-│  (JWT Auth + Rate Limiting + OpenAPI Docs)  │
-├──────────────┬──────────────────────────────┤
-│  Controllers │  EventController             │
-│              │  VenueController             │
-│              │  BookingController           │
-│              │  PaymentController           │
-│              │  TicketTypeController        │
-│              │  AuthController / UserCtrl   │
-├──────────────┴──────────────────────────────┤
-│             Service Layer                   │
-│  EventService  │ VenueService               │
-│  BookingService│ PaymentService             │
-│  TicketService │ AuthService / UserService  │
-├──────────────────────────────────────────────┤
-│         Infrastructure Layer                │
-│  MySQL 8.0    │ Redis 7 (Cache)             │
-│  Apache Kafka │ Resilience4j                │
-│  Bucket4j     │ Spring Actuator+Prometheus  │
-└──────────────────────────────────────────────┘
-```
-
----
-
-## 🚀 Production-Grade Features
-
-### 1. 🔐 JWT Authentication & RBAC
-- Stateless JWT authentication with `HS512` algorithm
-- Two roles: `ADMIN` (manage events/venues) and `USER` (book/cancel tickets)
-- Custom entry points for 401 Unauthorized and 403 Forbidden
-
-### 2. 📨 Apache Kafka — Event-Driven Notifications
-- **3 Kafka topics** auto-created on startup: `booking-created`, `booking-cancelled`, `payment-processed`
-- `BookingEventProducer` publishes domain events asynchronously after each booking/payment action
-- `BookingEventConsumer` consumes events to simulate email/SMS dispatch (notification service hook)
-- Booking reference used as **Kafka message key** to guarantee per-booking ordering
-
-### 3. ⚡ Redis Caching
-- `@Cacheable` on `getEventById` (15 min TTL) and `getVenueById` / `getAllVenues` (30 min TTL)
-- `@CacheEvict` on all mutating operations to maintain cache consistency
-- JSON serialization with `GenericJackson2JsonRedisSerializer` + Java time module support
-
-### 4. 🛡️ Rate Limiting (Bucket4j — Token Bucket Algorithm)
-- Per-client rate limiting: authenticated users (20 req/min), anonymous users (10 req/min by IP)
-- Returns `HTTP 429 Too Many Requests` with `Retry-After` and `X-Rate-Limit-Remaining` headers
-- Skips actuator and Swagger endpoints automatically
-
-### 5. 💳 Mock Payment Integration (Razorpay-style)
-- `PENDING_PAYMENT → CONFIRMED / CANCELLED` booking lifecycle
-- **Idempotency key** pattern: `orderId = PAY-{bookingReference}-{uuid}` prevents duplicate charges
-- 90% mock success rate to simulate real gateway behavior with latency simulation
-- Full refund flow: `processRefund()` marks payment as `REFUNDED`
-
-### 6. 🔌 Resilience4j Circuit Breaker
-- Circuit breaker wraps all payment gateway calls
-- **Opens** after 50% failure rate in last 10 calls (10 second slow-call duration threshold)
-- **Fallback**: returns `GATEWAY_UNAVAILABLE` response gracefully instead of crashing
-- 3-attempt **retry** with 500ms wait on transient failures
-
-### 7. 📊 Spring Actuator + Prometheus
-- Health, info, metrics endpoints at `/actuator/**`
-- `/actuator/health` and `/actuator/info` are public; rest require ADMIN
-- Prometheus metrics at `/actuator/prometheus` for Grafana dashboards
-- Circuit breaker metrics exposed via Micrometer
-
----
-
-## 🗄️ Domain Model
-
-```
-User ─────< Booking >──────── BookingItem ──── TicketType
-                │                                    │
-                │                                    │
-             Payment                               Event ──── Venue
-```
-
-| Entity       | Key Fields                                                       |
-|-------------|------------------------------------------------------------------|
-| `User`       | id, name, email, password (BCrypt), role (USER/ADMIN)           |
-| `Event`      | id, title, category, eventDate, status (DRAFT/PUBLISHED/etc.)  |
-| `Venue`      | id, name, city, address, capacity                               |
-| `TicketType` | id, name, price, totalQuantity, availableQuantity               |
-| `Booking`    | id, bookingReference (EE-XXXXXXXX), status, totalAmount         |
-| `BookingItem`| id, quantity, priceAtBookingTime                                |
-| `Payment`    | id, orderId (idempotency key), gatewayPaymentId, status, amount |
-
----
-
-## 📋 API Endpoints
-
-### Auth
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| POST | `/api/v1/auth/register` | Public | Register new user |
-| POST | `/api/v1/auth/login` | Public | Login, returns JWT |
-
-### Events
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/api/v1/events` | Public | Search/filter events |
-| GET | `/api/v1/events/{id}` | Public | Get event by ID (cached) |
-| POST | `/api/v1/events` | ADMIN | Create event |
-| PUT | `/api/v1/events/{id}` | ADMIN | Update event |
-| DELETE | `/api/v1/events/{id}` | ADMIN | Delete event |
-
-### Venues
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/api/v1/venues` | Authenticated | List all venues (cached) |
-| GET | `/api/v1/venues/{id}` | Authenticated | Get venue (cached) |
-| POST | `/api/v1/venues` | ADMIN | Create venue |
-| PUT | `/api/v1/venues/{id}` | ADMIN | Update venue |
-| DELETE | `/api/v1/venues/{id}` | ADMIN | Delete venue |
-
-### Bookings
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| POST | `/api/v1/bookings` | USER/ADMIN | Create booking (PENDING_PAYMENT) |
-| GET | `/api/v1/bookings/my` | USER/ADMIN | My bookings (paginated) |
-| GET | `/api/v1/bookings/{id}` | USER/ADMIN | Get booking |
-| PUT | `/api/v1/bookings/{id}/cancel` | USER/ADMIN | Cancel + restore tickets |
-
-### Payments
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| POST | `/api/v1/payments/bookings/{id}/pay` | USER/ADMIN | Pay for booking (circuit-breaker) |
-| POST | `/api/v1/payments/bookings/{id}/refund` | USER/ADMIN | Refund paid booking |
-
-### Ticket Types
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/api/v1/events/{id}/ticket-types` | Public | List ticket types |
-| POST | `/api/v1/events/{id}/ticket-types` | ADMIN | Create ticket type |
-| PUT | `/api/v1/ticket-types/{id}` | ADMIN | Update ticket type |
-| DELETE | `/api/v1/ticket-types/{id}` | ADMIN | Delete ticket type |
-
----
-
-## ⚙️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Language | Java 21 |
-| Framework | Spring Boot 3.3.5 |
-| Security | Spring Security + JWT (JJWT 0.12) |
-| Persistence | Spring Data JPA + Hibernate |
-| Database | MySQL 8.0 |
-| Cache | Redis 7 (Spring Cache) |
-| Messaging | Apache Kafka 3.x |
-| Rate Limiting | Bucket4j 8.x (Token Bucket) |
-| Resilience | Resilience4j (Circuit Breaker + Retry) |
-| Observability | Spring Actuator + Micrometer + Prometheus |
-| API Docs | SpringDoc OpenAPI (Swagger UI) |
-| Build | Maven 3.9 |
-| Containerization | Docker + Docker Compose |
-
----
-
-## 🐳 Running Locally
+## 🚀 Getting Started
 
 ### Prerequisites
-- Java 21+
-- Docker + Docker Compose
-- Maven 3.9+
+- Java 21
+- Node.js 18+
+- Docker and Docker Compose
+- Maven
 
-### Step 1: Start Infrastructure
+### Environment Variables
+
+Before starting the backend, you must define the following environment variables (or rely on the defaults defined in `application.yml`):
+- `OPENAI_API_KEY`: **(Required)** Your OpenAI API key for the Spring AI assistant.
+- `JWT_SECRET`: Secret key for signing JWTs (has a default fallback).
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`: MySQL connection details (has defaults).
+- `REDIS_HOST`, `REDIS_PORT`: Redis connection details (has defaults).
+- `KAFKA_BOOTSTRAP_SERVERS`: Kafka broker details (has defaults).
+
+### Running with Docker Compose (Infrastructure)
+
+Start the required infrastructure (MySQL, Redis, Kafka, Zookeeper) using Docker Compose:
 
 ```bash
 docker-compose up -d
 ```
 
-This starts:
-- **MySQL** on port `3306`
-- **Redis** on port `6379`
-- **Zookeeper** on port `2181`
-- **Kafka** on port `9092`
+### Backend Setup
 
-### Step 2: Run the Application
+1. Open a terminal in the root directory.
+2. Run the Spring Boot application using Maven:
+   ```bash
+   mvn spring-boot:run
+   ```
+3. The backend will start on `http://localhost:8080`.
+4. Swagger UI is available at `http://localhost:8080/swagger-ui.html`.
 
-```bash
-mvn spring-boot:run
-```
+### Frontend Setup
 
-### Step 3: Access Services
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+4. The React application will be available at `http://localhost:5173`.
 
-| Service | URL |
-|---------|-----|
-| Swagger UI | http://localhost:8080/swagger-ui.html |
-| Health Check | http://localhost:8080/actuator/health |
-| Prometheus Metrics | http://localhost:8080/actuator/prometheus |
+## 🤖 AI Assistant Setup
 
----
+The EventEase Assistant is powered by Spring AI. It uses context-aware tool calling to fetch live data directly from the Spring Boot backend without hallucinating.
 
-## 📁 Project Structure
+1. Ensure the `OPENAI_API_KEY` environment variable is exported before running the backend.
+   - Example (Windows PowerShell): `$env:OPENAI_API_KEY="sk-..."`
+   - Example (Bash): `export OPENAI_API_KEY="sk-..."`
+2. The AI assistant widget is accessible from any page on the frontend once logged in.
+3. It can search for events, check ticket availability, and query your authenticated booking history!
 
-```
-src/main/java/com/eventease/
-├── config/          # Kafka, Redis, Security, OpenAPI configs
-├── controller/      # REST controllers
-├── dto/             # Request/Response DTOs
-├── entity/          # JPA entities
-├── enums/           # BookingStatus, PaymentStatus, Role, EventStatus
-├── event/           # Kafka event DTOs + Producer + Consumer
-├── exception/       # Custom exceptions + GlobalExceptionHandler
-├── mapper/          # Entity ↔ DTO mappers
-├── repository/      # Spring Data JPA repositories
-├── security/        # JWT filter, rate limit filter, UserDetails
-├── service/         # Service interfaces
-│   └── impl/        # Service implementations
-└── util/            # Utility classes
-```
+## 📸 Screenshots
 
----
+> Placeholder for future screenshots of the EventEase frontend and dashboard.
 
-## 🔑 Key Design Patterns Used
+## 🧪 Testing
 
-| Pattern | Where Applied |
-|---------|--------------|
-| **Repository Pattern** | All data access via `JpaRepository` |
-| **DTO Pattern** | Separate request/response DTOs |
-| **Event-Driven** | Kafka events for booking/payment notifications |
-| **Token Bucket** | Rate limiting via Bucket4j |
-| **Circuit Breaker** | Resilience4j on payment gateway calls |
-| **Idempotency Key** | `orderId` prevents duplicate payment charges |
-| **Atomic Updates** | SQL `UPDATE WHERE availableQuantity >= quantity` prevents overselling |
-| **Strategy Pattern** | `PaymentGatewayService` interface for swappable gateways |
-
----
-
-## 🌱 Data Seeding
-
-On startup, `DataSeeder` auto-creates:
-- 1 ADMIN user: `admin@eventease.com` / `Admin@1234`
-- 1 regular USER: `user@eventease.com` / `User@1234`
-- Sample venues and events
-
----
-
-*Built as a portfolio project demonstrating production-grade Java backend engineering for Amazon/FAANG interview preparation.*
+- **Backend Tests:** Run `mvn test` in the root directory.
+- **Frontend Build:** Run `npm run build` inside the `/frontend` directory to verify TypeScript compilation.
