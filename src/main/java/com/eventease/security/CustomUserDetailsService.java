@@ -1,4 +1,4 @@
-package com.eventease.security;
+   package com.eventease.security;
 
 import com.eventease.entity.User;
 import com.eventease.repository.UserRepository;

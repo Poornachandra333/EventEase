@@ -10,6 +10,7 @@ import com.eventease.entity.User;
 import com.eventease.enums.BookingStatus;
 import com.eventease.enums.EventStatus;
 import com.eventease.enums.Role;
+import com.eventease.event.BookingEventProducer;
 import com.eventease.exception.BookingNotAllowedException;
 import com.eventease.exception.InsufficientTicketsException;
 import com.eventease.exception.InvalidBookingException;
@@ -34,8 +35,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +53,9 @@ class BookingServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private BookingEventProducer bookingEventProducer;
+
     private BookingMapper bookingMapper;
     private BookingService bookingService;
 
@@ -64,7 +67,8 @@ class BookingServiceTest {
     void setUp() {
         bookingMapper = new BookingMapper();
         bookingService = new BookingServiceImpl(
-                bookingRepository, eventRepository, ticketTypeRepository, userRepository, bookingMapper
+                bookingRepository, eventRepository, ticketTypeRepository,
+                userRepository, bookingMapper, bookingEventProducer
         );
 
         user = User.builder().id(1L).name("Customer").email("user@example.com").role(Role.USER).build();
@@ -73,7 +77,7 @@ class BookingServiceTest {
     }
 
     @Test
-    @DisplayName("Should successfully create a booking and decrease inventory atomically")
+    @DisplayName("Should successfully create a booking in PENDING_PAYMENT status")
     void createBookingSuccess() {
         CreateBookingRequest request = CreateBookingRequest.builder()
                 .eventId(10L)
@@ -83,20 +87,23 @@ class BookingServiceTest {
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
         when(eventRepository.findById(10L)).thenReturn(Optional.of(publishedEvent));
         when(ticketTypeRepository.findById(100L)).thenReturn(Optional.of(vipTicket));
-        when(ticketTypeRepository.decreaseAvailableQuantity(100L, 2)).thenReturn(1); // 1 row updated atomically
+        when(ticketTypeRepository.decreaseAvailableQuantity(100L, 2)).thenReturn(1);
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
             Booking b = invocation.getArgument(0);
             b.setId(500L);
             return b;
         });
+        // Kafka publish is fire-and-forget — stub to do nothing
+        doNothing().when(bookingEventProducer).publishBookingCreated(any());
 
         BookingResponse response = bookingService.createBooking("user@example.com", request);
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(500L);
         assertThat(response.getBookingReference()).startsWith("EE-");
-        assertThat(response.getTotalAmount()).isEqualTo(new BigDecimal("200.00")); // 2 * $100.00 calculated server-side
-        assertThat(response.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(response.getTotalAmount()).isEqualTo(new BigDecimal("200.00"));
+        // Status starts as PENDING_PAYMENT; payment step is separate
+        assertThat(response.getStatus()).isEqualTo(BookingStatus.PENDING_PAYMENT);
     }
 
     @Test
@@ -110,7 +117,7 @@ class BookingServiceTest {
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
         when(eventRepository.findById(10L)).thenReturn(Optional.of(publishedEvent));
         when(ticketTypeRepository.findById(100L)).thenReturn(Optional.of(vipTicket));
-        when(ticketTypeRepository.decreaseAvailableQuantity(100L, 10)).thenReturn(0); // 0 rows updated (insufficient inventory)
+        when(ticketTypeRepository.decreaseAvailableQuantity(100L, 10)).thenReturn(0);
 
         assertThatThrownBy(() -> bookingService.createBooking("user@example.com", request))
                 .isInstanceOf(InsufficientTicketsException.class)
@@ -190,6 +197,7 @@ class BookingServiceTest {
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
         when(bookingRepository.findById(700L)).thenReturn(Optional.of(confirmedBooking));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(bookingEventProducer).publishBookingCancelled(any());
 
         BookingResponse response = bookingService.cancelBooking("user@example.com", 700L);
 
