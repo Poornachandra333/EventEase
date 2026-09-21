@@ -14,6 +14,6 @@ export interface ChatResponse {
 }
 
 export const sendChatMessage = async (messages: ChatMessage[]): Promise<string> => {
-  const response = await axiosInstance.post<ChatResponse>('/api/v1/ai/chat', { messages });
+  const response = await axiosInstance.post<ChatResponse>('/ai/chat', { messages });
   return response.data.response;
 };

@@ -71,6 +71,7 @@ const AiAssistant: React.FC = () => {
           onClick={toggleOpen}
           className="bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-xl transition-all transform hover:scale-105 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-primary-300"
           aria-label="Open AI Assistant"
+          title="Open AI Assistant"
         >
           <MessageSquare className="h-6 w-6" />
         </button>
@@ -85,10 +86,20 @@ const AiAssistant: React.FC = () => {
               <h3 className="font-semibold text-sm">EventEase Assistant</h3>
             </div>
             <div className="flex items-center space-x-2">
-              <button onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }} className="text-primary-100 hover:text-white focus:outline-none">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }} 
+                className="text-primary-100 hover:text-white focus:outline-none"
+                aria-label={isMinimized ? "Maximize" : "Minimize"}
+                title={isMinimized ? "Maximize" : "Minimize"}
+              >
                 {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
               </button>
-              <button onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} className="text-primary-100 hover:text-white focus:outline-none">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} 
+                className="text-primary-100 hover:text-white focus:outline-none"
+                aria-label="Close"
+                title="Close"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -155,9 +166,10 @@ const AiAssistant: React.FC = () => {
                   <button
                     type="submit"
                     disabled={!input.trim() || loading}
-                    className="flex-shrink-0 bg-primary-600 text-white rounded-full p-2.5 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex-shrink-0 bg-primary-600 text-white rounded-full py-2 px-4 flex items-center hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                   >
-                    <Send className="h-5 w-5 ml-0.5" />
+                    Send
+                    <Send className="h-4 w-4 ml-1.5" />
                   </button>
                 </form>
               </div>

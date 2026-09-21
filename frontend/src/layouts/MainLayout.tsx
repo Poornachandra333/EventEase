@@ -42,15 +42,16 @@ const MainLayout: React.FC = () => {
                   <span className="text-sm font-medium text-gray-700 hidden sm:block">
                     Hi, {user?.name.split(' ')[0]}
                   </span>
-                  <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 p-2 rounded-full">
-                    <LogOut className="h-5 w-5" />
+                  <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 p-2 rounded-full flex items-center text-sm font-medium transition-colors">
+                    <LogOut className="h-5 w-5 mr-1" />
+                    Logout
                   </button>
                 </>
               ) : (
                 <>
                   <Link to="/login" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium">Log in</Link>
                   <Link to="/register" className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                    Sign up
+                    Create Account
                   </Link>
                 </>
               )}
