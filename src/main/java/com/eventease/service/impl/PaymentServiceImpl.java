@@ -1,5 +1,12 @@
 package com.eventease.service.impl;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Objects;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.eventease.dto.booking.BookingResponse;
 import com.eventease.entity.Booking;
 import com.eventease.entity.Payment;
@@ -13,17 +20,13 @@ import com.eventease.exception.ResourceNotFoundException;
 import com.eventease.mapper.BookingMapper;
 import com.eventease.repository.BookingRepository;
 import com.eventease.repository.PaymentRepository;
+import com.eventease.repository.TicketTypeRepository;
 import com.eventease.repository.UserRepository;
 import com.eventease.service.PaymentGatewayService;
 import com.eventease.service.PaymentService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * Payment service orchestrating the payment lifecycle:
@@ -41,6 +44,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
+    private final TicketTypeRepository ticketTypeRepository;
     private final PaymentGatewayService paymentGatewayService;
     private final BookingEventProducer bookingEventProducer;
     private final BookingMapper bookingMapper;
@@ -48,12 +52,15 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public BookingResponse initiatePayment(Long bookingId, String userEmail) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking booking = bookingRepository.findWithLockById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
+
+        var requester = userRepository.findByEmail(userEmail)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + userEmail));
 
         // Authorization: only booking owner or ADMIN
         if (!booking.getUser().getEmail().equals(userEmail)
-                && booking.getUser().getRole() != Role.ADMIN) {
+            && requester.getRole() != Role.ADMIN) {
             throw new InvalidBookingException("Access denied: You can only pay for your own bookings");
         }
 
@@ -65,26 +72,30 @@ public class PaymentServiceImpl implements PaymentService {
             throw new InvalidBookingException("Booking is already paid and confirmed");
         }
 
-        // Idempotency: check if payment already exists for this booking
-        String orderId = "PAY-" + booking.getBookingReference() + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        if (paymentRepository.existsByOrderId(orderId)) {
-            log.warn("Idempotency: Payment with orderId {} already exists", orderId);
-            Payment existingPayment = paymentRepository.findByOrderId(orderId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+        // One stable order per booking makes retries idempotent and prevents duplicate charges.
+        String orderId = "PAY-" + booking.getBookingReference();
+        Payment existingPayment = paymentRepository.findByBookingId(bookingId).orElse(null);
+        if (existingPayment != null && existingPayment.getStatus() == PaymentStatus.SUCCESS) {
             BookingResponse response = bookingMapper.toResponse(booking);
             response.setPaymentOrderId(existingPayment.getOrderId());
             response.setPaymentStatus(existingPayment.getStatus());
             return response;
         }
 
-        // Create PENDING payment record first
-        Payment payment = Payment.builder()
+        Payment payment = existingPayment;
+        if (payment == null) {
+            payment = Payment.builder()
                 .booking(booking)
                 .orderId(orderId)
                 .amount(booking.getTotalAmount())
                 .status(PaymentStatus.PENDING)
                 .build();
-        paymentRepository.save(payment);
+        } else {
+            payment.setStatus(PaymentStatus.PENDING);
+            payment.setFailureReason(null);
+        }
+        Payment paymentToPersist = Objects.requireNonNull(payment);
+        paymentRepository.saveAndFlush(paymentToPersist);
 
         log.info("Initiating payment for booking: {} with orderId: {}", booking.getBookingReference(), orderId);
 
@@ -101,6 +112,9 @@ public class PaymentServiceImpl implements PaymentService {
             payment.setStatus(PaymentStatus.FAILED);
             payment.setFailureReason(gatewayResponse.getOrDefault("errorMessage", "Payment declined by gateway"));
             booking.setStatus(BookingStatus.CANCELLED);
+            booking.setCancelledAt(LocalDateTime.now());
+            booking.getItems().forEach(item ->
+                    ticketTypeRepository.restoreAvailableQuantity(item.getTicketType().getId(), item.getQuantity()));
             log.warn("Payment FAILED for booking: {} reason: {}", booking.getBookingReference(), payment.getFailureReason());
         }
 
@@ -134,7 +148,19 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public Map<String, String> processRefund(Long bookingId) {
+    public Map<String, String> processRefund(Long bookingId, String userEmail) {
+        Long requiredBookingId = Objects.requireNonNull(bookingId);
+        Booking booking = bookingRepository.findById(requiredBookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
+        var requester = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + userEmail));
+        if (!booking.getUser().getEmail().equals(userEmail) && requester.getRole() != Role.ADMIN) {
+            throw new InvalidBookingException("Access denied: You can only refund your own bookings");
+        }
+        if (booking.getStatus() != BookingStatus.CANCELLED) {
+            throw new InvalidBookingException("Only cancelled bookings can be refunded");
+        }
+
         Payment payment = paymentRepository.findByBookingIdAndStatus(bookingId, PaymentStatus.SUCCESS)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No successful payment found for booking ID: " + bookingId + " to refund"));
@@ -144,8 +170,10 @@ public class PaymentServiceImpl implements PaymentService {
         Map<String, String> refundResult = paymentGatewayService.refundPayment(
                 payment.getPaymentGatewayId(), payment.getAmount());
 
-        payment.setStatus(PaymentStatus.REFUNDED);
-        paymentRepository.save(payment);
+        if ("REFUNDED".equals(refundResult.get("status"))) {
+            payment.setStatus(PaymentStatus.REFUNDED);
+            paymentRepository.save(payment);
+        }
 
         log.info("Refund processed for booking: {} refund_id: {}", bookingId, refundResult.get("refundId"));
         return refundResult;

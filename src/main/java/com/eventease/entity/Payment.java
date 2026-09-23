@@ -1,6 +1,10 @@
 package com.eventease.entity;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import com.eventease.enums.PaymentStatus;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,9 +25,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
 /**
  * Payment entity representing a payment transaction for a booking.
  * Uses orderId as an idempotency key to prevent duplicate payment processing.
@@ -33,7 +34,7 @@ import java.time.LocalDateTime;
     name = "payments",
     indexes = {
         @Index(name = "idx_payment_order_id", columnList = "order_id", unique = true),
-        @Index(name = "idx_payment_booking_id", columnList = "booking_id")
+        @Index(name = "idx_payment_booking_id", columnList = "booking_id", unique = true)
     }
 )
 @Getter

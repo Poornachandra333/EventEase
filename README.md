@@ -5,7 +5,7 @@ EventEase is a robust, production-oriented event booking platform. It provides a
 ## 🏗 Architecture & Tech Stack
 
 ### Backend
-- **Java 21 & Spring Boot 3**
+- **Java 25 & Spring Boot 3**
 - **Spring Security & JWT**: For authentication and Role-Based Access Control (RBAC).
 - **MySQL & Spring Data JPA**: Primary data persistence.
 - **Redis**: Caching layer for fast data retrieval.
@@ -26,23 +26,23 @@ EventEase is a robust, production-oriented event booking platform. It provides a
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Java 21
+- Java 25
 - Node.js 18+
 - Docker and Docker Compose
 - Maven
 
 ### Environment Variables
 
-Before starting the backend, you must define the following environment variables (or rely on the defaults defined in `application.yml`):
-- `OPENAI_API_KEY`: **(Required)** Your OpenAI API key for the Spring AI assistant.
-- `JWT_SECRET`: Secret key for signing JWTs (has a default fallback).
-- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`: MySQL connection details (has defaults).
-- `REDIS_HOST`, `REDIS_PORT`: Redis connection details (has defaults).
-- `KAFKA_BOOTSTRAP_SERVERS`: Kafka broker details (has defaults).
+Before starting the backend, copy `.env.example` to `.env` for Docker Compose, or export the variables in your shell. The following values are required or commonly customized:
+- `OPENAI_API_KEY`: Optional for the core booking flow; required for the AI assistant.
+- `JWT_SECRET`: Secret key for signing JWTs (required; use a unique value of at least 32 bytes).
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`: MySQL connection details.
+- `REDIS_HOST`, `REDIS_PORT`: Redis connection details.
+- `KAFKA_BOOTSTRAP_SERVERS`: Kafka broker details.
 
 ### Running with Docker Compose (Infrastructure)
 
-Start the required infrastructure (MySQL, Redis, Kafka, Zookeeper) using Docker Compose:
+Start the complete Dockerized backend and required infrastructure (MySQL, Redis, Kafka, Zookeeper) using Docker Compose:
 
 ```bash
 docker-compose up -d
@@ -50,12 +50,12 @@ docker-compose up -d
 
 ### Backend Setup
 
-1. Open a terminal in the root directory.
+1. Define `JWT_SECRET` and database variables, then open a terminal in the root directory.
 2. Run the Spring Boot application using Maven:
    ```bash
    mvn spring-boot:run
    ```
-3. The backend will start on `http://localhost:8080`.
+3. The backend will start on `http://localhost:8080` in local Maven mode. Docker Compose exposes it at `http://localhost:8081`.
 4. Swagger UI is available at `http://localhost:8080/swagger-ui.html`.
 
 ### Frontend Setup
