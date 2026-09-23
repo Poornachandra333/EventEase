@@ -1,9 +1,9 @@
 package com.eventease.service;
 
+import java.util.Map;
+
 import com.eventease.dto.booking.BookingResponse;
 import com.eventease.entity.Payment;
-
-import java.util.Map;
 
 /**
  * Service interface for managing payment lifecycle operations.
@@ -32,7 +32,8 @@ public interface PaymentService {
      * Processes a refund for a cancelled booking that was already paid.
      *
      * @param bookingId Booking ID
+     * @param userEmail Requesting user's email (for ownership verification)
      * @return Refund result map from the gateway
      */
-    Map<String, String> processRefund(Long bookingId);
+    Map<String, String> processRefund(Long bookingId, String userEmail);
 }

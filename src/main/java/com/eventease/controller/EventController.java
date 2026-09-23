@@ -1,17 +1,12 @@
 package com.eventease.controller;
 
-import com.eventease.dto.event.CreateEventRequest;
-import com.eventease.dto.event.EventResponse;
-import com.eventease.dto.event.EventSearchCriteria;
-import com.eventease.dto.event.EventSummaryResponse;
-import com.eventease.dto.event.UpdateEventRequest;
-import com.eventease.enums.EventStatus;
-import com.eventease.service.EventService;
-import jakarta.validation.Valid;
+import java.time.LocalDate;
+
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +17,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
+import com.eventease.dto.event.CreateEventRequest;
+import com.eventease.dto.event.EventResponse;
+import com.eventease.dto.event.EventSearchCriteria;
+import com.eventease.dto.event.EventSummaryResponse;
+import com.eventease.dto.event.UpdateEventRequest;
+import com.eventease.enums.EventStatus;
+import com.eventease.service.EventService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/events")
@@ -49,13 +52,19 @@ public class EventController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate eventDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "eventDate,asc") String sort) {
+            @RequestParam(defaultValue = "eventDate,asc") String sort,
+            Authentication authentication) {
+
+        EventStatus visibleStatus = status;
+        if (!isAdmin(authentication) && visibleStatus == null) {
+            visibleStatus = EventStatus.PUBLISHED;
+        }
 
         EventSearchCriteria criteria = EventSearchCriteria.builder()
                 .title(title)
                 .category(category)
                 .city(city)
-                .status(status)
+                .status(visibleStatus)
                 .eventDate(eventDate)
                 .page(page)
                 .size(size)
@@ -67,9 +76,19 @@ public class EventController {
     }
 
     @GetMapping("/{eventId}")
-    public ResponseEntity<EventResponse> getEventById(@PathVariable Long eventId) {
+    public ResponseEntity<EventResponse> getEventById(
+            @PathVariable Long eventId,
+            Authentication authentication) {
         EventResponse response = eventService.getEventById(eventId);
+        if (!isAdmin(authentication) && response.getStatus() != EventStatus.PUBLISHED) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok(response);
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
     @PutMapping("/{eventId}")

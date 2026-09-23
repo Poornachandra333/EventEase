@@ -1,11 +1,7 @@
 package com.eventease.controller;
 
-import com.eventease.dto.booking.BookingResponse;
-import com.eventease.service.PaymentService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,7 +10,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import com.eventease.dto.booking.BookingResponse;
+import com.eventease.service.PaymentService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 
 /**
  * REST controller exposing payment endpoints.
@@ -59,7 +61,7 @@ public class PaymentController {
             @PathVariable Long bookingId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Map<String, String> refundResult = paymentService.processRefund(bookingId);
+        Map<String, String> refundResult = paymentService.processRefund(bookingId, userDetails.getUsername());
         return ResponseEntity.ok(refundResult);
     }
 }

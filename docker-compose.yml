@@ -76,7 +76,7 @@ services:
       DB_URL: jdbc:mysql://mysql-db:3306/${DB_NAME:-eventease_db}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME:-eventease_user}
       DB_PASSWORD: ${DB_PASSWORD:-eventease_pass}
-      JWT_SECRET: ${JWT_SECRET:-9a4f2c8d7e1b5a3f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env or the shell}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
       REDIS_HOST: redis
       REDIS_PORT: 6379
