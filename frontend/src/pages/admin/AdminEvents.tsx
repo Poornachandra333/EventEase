@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getEvents, deleteEvent, createEvent } from '../../api/eventApi';
 import { getVenues } from '../../api/venueApi';
 import { EventSummary, Venue } from '../../types';
-import { Calendar, Plus, Edit, Trash2, X, Ticket } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Ticket } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 
@@ -56,7 +56,7 @@ const AdminEvents: React.FC = () => {
     try {
       await deleteEvent(id);
       fetchEvents();
-    } catch (err) {
+    } catch {
       alert('Failed to delete event');
     }
   };

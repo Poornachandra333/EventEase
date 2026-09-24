@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { sendChatMessage, ChatMessage } from '../api/aiApi';
-import { MessageSquare, X, Send, Loader2, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageSquare, X, Send, Minimize2, Maximize2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
 
 const AiAssistant: React.FC = () => {
   const { isAuthenticated } = useAuth();

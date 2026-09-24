@@ -36,7 +36,7 @@ const AdminVenues: React.FC = () => {
     try {
       await deleteVenue(id);
       loadVenues();
-    } catch (err) {
+    } catch {
       alert('Failed to delete venue');
     }
   };

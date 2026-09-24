@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, User, LogOut, Settings } from 'lucide-react';
+import { Calendar, LogOut, Settings } from 'lucide-react';
 import AiAssistant from '../components/AiAssistant';
 
 const MainLayout: React.FC = () => {

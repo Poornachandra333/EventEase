@@ -8,8 +8,18 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY:}
       chat:
+        enabled: ${AI_ENABLED:false}
         options:
           model: gpt-4o-mini
+      embedding:
+        enabled: ${AI_ENABLED:false}
+      image:
+        enabled: ${AI_ENABLED:false}
+      audio:
+        transcription:
+          enabled: ${AI_ENABLED:false}
+        speech:
+          enabled: ${AI_ENABLED:false}
   application:
     name: EventEase
   datasource:
