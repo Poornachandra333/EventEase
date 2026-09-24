@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getEvents } from '../../api/eventApi';
 import { getVenues } from '../../api/venueApi';
-import { getMyBookings } from '../../api/bookingApi'; // Not an admin endpoint for all bookings, but we'll use it to simulate stats or just show basic stats
-import { Calendar, MapPin, Users, Ticket, TrendingUp } from 'lucide-react';
+import { Calendar, MapPin, Ticket, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminDashboard: React.FC = () => {

@@ -45,7 +45,7 @@ const AdminTicketTypes: React.FC = () => {
     try {
       await deleteTicketType(id);
       loadData();
-    } catch (err) {
+    } catch {
       alert('Failed to delete ticket type');
     }
   };

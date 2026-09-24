@@ -4,6 +4,22 @@ server:
     context-path: /
 
 spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        enabled: ${AI_ENABLED:false}
+        options:
+          model: gpt-4o-mini
+      embedding:
+        enabled: ${AI_ENABLED:false}
+      image:
+        enabled: ${AI_ENABLED:false}
+      audio:
+        transcription:
+          enabled: ${AI_ENABLED:false}
+        speech:
+          enabled: ${AI_ENABLED:false}
   application:
     name: EventEase
 
@@ -55,7 +71,6 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   rate-limit:
     authenticated-rpm: ${RATE_LIMIT_AUTH_RPM:20}
     anonymous-rpm: ${RATE_LIMIT_ANON_RPM:10}

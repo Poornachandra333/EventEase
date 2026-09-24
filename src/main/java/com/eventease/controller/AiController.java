@@ -1,16 +1,19 @@
 package com.eventease.controller;
 
-import com.eventease.service.AiService;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Map;
+import com.eventease.service.AiService;
 
 @RestController
+@ConditionalOnProperty(name = "spring.ai.openai.chat.enabled", havingValue = "true")
 @RequestMapping("/api/v1/ai")
 public class AiController {
 

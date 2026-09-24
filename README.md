@@ -5,7 +5,7 @@ EventEase is a robust, production-oriented event booking platform. It provides a
 ## 🏗 Architecture & Tech Stack
 
 ### Backend
-- **Java 25 & Spring Boot 3**
+- **Java 21 & Spring Boot 3**
 - **Spring Security & JWT**: For authentication and Role-Based Access Control (RBAC).
 - **MySQL & Spring Data JPA**: Primary data persistence.
 - **Redis**: Caching layer for fast data retrieval.
@@ -26,7 +26,7 @@ EventEase is a robust, production-oriented event booking platform. It provides a
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Java 25
+- Java 21
 - Node.js 18+
 - Docker and Docker Compose
 - Maven
@@ -35,6 +35,7 @@ EventEase is a robust, production-oriented event booking platform. It provides a
 
 Before starting the backend, copy `.env.example` to `.env` for Docker Compose, or export the variables in your shell. The following values are required or commonly customized:
 - `OPENAI_API_KEY`: Optional for the core booking flow; required for the AI assistant.
+- `AI_ENABLED`: Set to `true` together with `OPENAI_API_KEY` to enable the AI assistant (defaults to `false`).
 - `JWT_SECRET`: Secret key for signing JWTs (required; use a unique value of at least 32 bytes).
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`: MySQL connection details.
 - `REDIS_HOST`, `REDIS_PORT`: Redis connection details.
@@ -73,12 +74,14 @@ docker-compose up -d
    npm run dev
    ```
 4. The React application will be available at `http://localhost:5173`.
+   When running the backend directly with Maven, start the frontend with
+   `VITE_API_BASE_URL=http://localhost:8080 npm run dev` so it uses the local backend port.
 
 ## 🤖 AI Assistant Setup
 
 The EventEase Assistant is powered by Spring AI. It uses context-aware tool calling to fetch live data directly from the Spring Boot backend without hallucinating.
 
-1. Ensure the `OPENAI_API_KEY` environment variable is exported before running the backend.
+1. Set `AI_ENABLED=true` and ensure the `OPENAI_API_KEY` environment variable is exported before running the backend.
    - Example (Windows PowerShell): `$env:OPENAI_API_KEY="sk-..."`
    - Example (Bash): `export OPENAI_API_KEY="sk-..."`
 2. The AI assistant widget is accessible from any page on the frontend once logged in.

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getBookingById } from '../api/bookingApi';
 import { initiatePayment } from '../api/paymentApi';
 import { BookingResponse } from '../types';
@@ -8,8 +8,6 @@ import { format } from 'date-fns';
 
 const Payment: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
-  const navigate = useNavigate();
-  
   const [booking, setBooking] = useState<BookingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
@@ -24,7 +22,7 @@ const Payment: React.FC = () => {
         if (data.status === 'CONFIRMED' || data.paymentStatus === 'SUCCESS') {
           setPaymentSuccess(true);
         }
-      } catch (err: any) {
+      } catch {
         setError('Failed to load booking details.');
       } finally {
         setLoading(false);

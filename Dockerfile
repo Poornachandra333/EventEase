@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────
 # Stage 1: Build the JAR with Maven
 # ─────────────────────────────────────────────
-FROM eclipse-temurin:25-jdk-alpine AS builder
+FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /build
 
 # Copy pom.xml first to cache dependencies layer
@@ -22,7 +22,7 @@ RUN mvn clean package -DskipTests -B -q
 # ─────────────────────────────────────────────
 # Stage 2: Lightweight runtime image
 # ─────────────────────────────────────────────
-FROM eclipse-temurin:25-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Create unprivileged security user

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, LayoutDashboard, MapPin, Ticket, Users, LogOut } from 'lucide-react';
+import { Calendar, LayoutDashboard, MapPin, LogOut } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
   const { isAdmin, loading, logout } = useAuth();
