@@ -1,4 +1,4 @@
-import api from './axios';
+import { eventApi as api } from './axios';
 import { TicketType } from '../types';
 
 export const getTicketTypesByEvent = async (eventId: number): Promise<TicketType[]> => {

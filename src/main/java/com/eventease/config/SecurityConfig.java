@@ -58,8 +58,6 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
                 .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/events", "/api/v1/events/*").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/events/*/ticket-types").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
                 // Actuator endpoints — secured to internal/ops access
@@ -70,14 +68,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/venues").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/v1/venues/*").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/venues/*").hasRole("ADMIN")
-
-                .requestMatchers(HttpMethod.POST, "/api/v1/events").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/v1/events/*").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/events/*").hasRole("ADMIN")
-
-                .requestMatchers(HttpMethod.POST, "/api/v1/events/*/ticket-types").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/v1/ticket-types/*").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/ticket-types/*").hasRole("ADMIN")
 
                 // USER & ADMIN endpoints
                 .requestMatchers("/api/v1/users/me").hasAnyRole("USER", "ADMIN")

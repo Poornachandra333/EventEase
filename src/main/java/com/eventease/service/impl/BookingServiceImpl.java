@@ -21,6 +21,7 @@ import com.eventease.exception.ResourceNotFoundException;
 import com.eventease.mapper.BookingMapper;
 import com.eventease.repository.BookingRepository;
 import com.eventease.repository.EventRepository;
+import com.eventease.repository.TicketInventoryRepository;
 import com.eventease.repository.TicketTypeRepository;
 import com.eventease.repository.UserRepository;
 import com.eventease.service.BookingService;
@@ -33,7 +34,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * Core booking service handling ticket reservation, cancellation, and retrieval.
@@ -46,6 +50,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final EventRepository eventRepository;
     private final TicketTypeRepository ticketTypeRepository;
+    private final TicketInventoryRepository ticketInventoryRepository;
     private final UserRepository userRepository;
     private final BookingMapper bookingMapper;
     private final BookingEventProducer bookingEventProducer;
@@ -54,12 +59,14 @@ public class BookingServiceImpl implements BookingService {
             BookingRepository bookingRepository,
             EventRepository eventRepository,
             TicketTypeRepository ticketTypeRepository,
+            TicketInventoryRepository ticketInventoryRepository,
             UserRepository userRepository,
             BookingMapper bookingMapper,
             BookingEventProducer bookingEventProducer) {
         this.bookingRepository = bookingRepository;
         this.eventRepository = eventRepository;
         this.ticketTypeRepository = ticketTypeRepository;
+        this.ticketInventoryRepository = ticketInventoryRepository;
         this.userRepository = userRepository;
         this.bookingMapper = bookingMapper;
         this.bookingEventProducer = bookingEventProducer;
@@ -86,8 +93,16 @@ public class BookingServiceImpl implements BookingService {
             throw new InvalidBookingException("Booking items list cannot be empty");
         }
 
+        String requestKey = normalizeRequestKey(request.getIdempotencyKey(), event.getId(), user.getId(), request.getItems());
+        Booking existingBooking = bookingRepository.findByUserIdAndRequestKey(user.getId(), requestKey).orElse(null);
+        if (existingBooking != null) {
+            log.info("Duplicate booking request detected for user {} event {} requestKey {}. Returning existing booking {}.", userEmail, event.getId(), requestKey, existingBooking.getBookingReference());
+            return bookingMapper.toResponse(existingBooking);
+        }
+
         Booking booking = Booking.builder()
                 .bookingReference(generateBookingReference())
+                .requestKey(requestKey)
                 .user(user)
                 .status(BookingStatus.PENDING_PAYMENT)
                 .totalAmount(BigDecimal.ZERO)
@@ -101,7 +116,7 @@ public class BookingServiceImpl implements BookingService {
                 throw new InvalidBookingException("Booking item quantity must be greater than zero");
             }
 
-            TicketType ticketType = ticketTypeRepository.findById(itemReq.getTicketTypeId())
+            TicketType ticketType = ticketTypeRepository.findByIdForReservation(itemReq.getTicketTypeId())
                     .orElseThrow(() -> new ResourceNotFoundException("Ticket type not found with ID: " + itemReq.getTicketTypeId()));
 
             if (!ticketType.getEvent().getId().equals(event.getId())) {
@@ -109,7 +124,8 @@ public class BookingServiceImpl implements BookingService {
             }
 
             // Atomic quantity reduction — prevents overselling under concurrency
-            int updatedRows = ticketTypeRepository.decreaseAvailableQuantity(ticketType.getId(), itemReq.getQuantity());
+            ticketInventoryRepository.ensureInventoryRow(ticketType.getId());
+            int updatedRows = ticketInventoryRepository.reserve(ticketType.getId(), itemReq.getQuantity());
             if (updatedRows == 0) {
                 throw new InsufficientTicketsException("Insufficient tickets available for ticket type: " + ticketType.getName());
             }
@@ -128,7 +144,16 @@ public class BookingServiceImpl implements BookingService {
         }
 
         booking.setTotalAmount(runningTotal);
-        Booking savedBooking = bookingRepository.save(booking);
+        Booking savedBooking;
+        try {
+            savedBooking = bookingRepository.saveAndFlush(booking);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Concurrent booking duplicate detected for user {} event {} requestKey {}. Looking up the persisted booking.",
+                    userEmail, event.getId(), requestKey);
+            Booking persistedBooking = bookingRepository.findByUserIdAndRequestKey(user.getId(), requestKey)
+                    .orElseThrow(() -> new IllegalStateException("Booking duplicate detected but no persisted booking found for request key: " + requestKey, e));
+            return bookingMapper.toResponse(persistedBooking);
+        }
 
         log.info("Booking created: {} for user: {} event: {}", savedBooking.getBookingReference(), userEmail, event.getTitle());
 
@@ -146,6 +171,19 @@ public class BookingServiceImpl implements BookingService {
         bookingEventProducer.publishBookingCreated(kafkaEvent);
 
         return bookingMapper.toResponse(savedBooking);
+    }
+
+    private String normalizeRequestKey(String clientKey, Long eventId, Long userId, java.util.List<BookingItemRequest> items) {
+        String resolved = (clientKey == null || clientKey.isBlank())
+                ? UUID.randomUUID().toString()
+                : clientKey.trim();
+
+        StringBuilder builder = new StringBuilder();
+        builder.append(userId).append(':').append(eventId).append(':').append(resolved).append(':');
+        for (BookingItemRequest item : items) {
+            builder.append(item.getTicketTypeId()).append('-').append(item.getQuantity()).append(';');
+        }
+        return builder.toString();
     }
 
     @Override
@@ -197,7 +235,7 @@ public class BookingServiceImpl implements BookingService {
         // Restore ticket quantities atomically
         for (BookingItem item : booking.getItems()) {
             if (item.getTicketType() != null) {
-                ticketTypeRepository.restoreAvailableQuantity(item.getTicketType().getId(), item.getQuantity());
+                ticketInventoryRepository.release(item.getTicketType().getId(), item.getQuantity());
             }
         }
 

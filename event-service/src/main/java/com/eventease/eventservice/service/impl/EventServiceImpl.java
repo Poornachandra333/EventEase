@@ -1,22 +1,19 @@
-package com.eventease.service.impl;
+package com.eventease.eventservice.service.impl;
 
-import com.eventease.dto.event.CreateEventRequest;
-import com.eventease.dto.event.EventResponse;
-import com.eventease.dto.event.EventSearchCriteria;
-import com.eventease.dto.event.EventSummaryResponse;
-import com.eventease.dto.event.UpdateEventRequest;
-import com.eventease.entity.Event;
-import com.eventease.entity.Venue;
-import com.eventease.enums.EventStatus;
-import com.eventease.exception.ResourceNotFoundException;
-import com.eventease.mapper.EventMapper;
-import com.eventease.repository.EventRepository;
-import com.eventease.repository.VenueRepository;
-import com.eventease.repository.specification.EventSpecification;
-import com.eventease.service.EventService;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
+import com.eventease.eventservice.dto.CreateEventRequest;
+import com.eventease.eventservice.dto.EventResponse;
+import com.eventease.eventservice.dto.EventSearchCriteria;
+import com.eventease.eventservice.dto.EventSummaryResponse;
+import com.eventease.eventservice.dto.UpdateEventRequest;
+import com.eventease.eventservice.entity.Event;
+import com.eventease.eventservice.entity.Venue;
+import com.eventease.eventservice.enums.EventStatus;
+import com.eventease.eventservice.exception.ResourceNotFoundException;
+import com.eventease.eventservice.mapper.EventMapper;
+import com.eventease.eventservice.repository.EventRepository;
+import com.eventease.eventservice.repository.VenueRepository;
+import com.eventease.eventservice.repository.specification.EventSpecification;
+import com.eventease.eventservice.service.EventService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,11 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-/**
- * Event service implementation with Redis caching.
- * - getEventById: cached per eventId, evicted on update/delete
- * - searchEvents: not cached (dynamic query with many filters)
- */
 @Service
 public class EventServiceImpl implements EventService {
 
@@ -49,35 +41,26 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "events", allEntries = true)
-    })
     public EventResponse createEvent(CreateEventRequest request) {
         validateTimeRange(request.getStartTime(), request.getEndTime());
-
         Venue venue = venueRepository.findById(request.getVenueId())
-                .orElseThrow(() -> new ResourceNotFoundException("Venue not found with ID: " + request.getVenueId()));
-
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Venue not found with ID: " + request.getVenueId()));
         Event event = eventMapper.toEntity(request, venue);
         event.setStatus(EventStatus.DRAFT);
-
-        Event savedEvent = eventRepository.save(event);
-        return eventMapper.toResponse(savedEvent);
+        return eventMapper.toResponse(eventRepository.save(event));
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<EventSummaryResponse> searchEvents(EventSearchCriteria criteria) {
-        Specification<Event> spec = EventSpecification.buildSpecification(criteria);
+        Specification<Event> specification = EventSpecification.buildSpecification(criteria);
         Pageable pageable = createPageable(criteria.getPage(), criteria.getSize(), criteria.getSort());
-
-        return eventRepository.findAll(spec, pageable)
-                .map(eventMapper::toSummaryResponse);
+        return eventRepository.findAll(specification, pageable).map(eventMapper::toSummaryResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "eventById", key = "#eventId")
     public EventResponse getEventById(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with ID: " + eventId));
@@ -86,40 +69,28 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "eventById", key = "#eventId"),
-        @CacheEvict(value = "events", allEntries = true)
-    })
     public EventResponse updateEvent(Long eventId, UpdateEventRequest request) {
         validateTimeRange(request.getStartTime(), request.getEndTime());
-
-        Event existingEvent = eventRepository.findById(eventId)
+        Event event = eventRepository.findByIdForUpdate(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with ID: " + eventId));
-
         Venue venue = venueRepository.findById(request.getVenueId())
-                .orElseThrow(() -> new ResourceNotFoundException("Venue not found with ID: " + request.getVenueId()));
-
-        existingEvent.setTitle(request.getTitle());
-        existingEvent.setDescription(request.getDescription());
-        existingEvent.setCategory(request.getCategory());
-        existingEvent.setEventDate(request.getEventDate());
-        existingEvent.setStartTime(request.getStartTime());
-        existingEvent.setEndTime(request.getEndTime());
-        existingEvent.setVenue(venue);
-        existingEvent.setStatus(request.getStatus());
-
-        Event updatedEvent = eventRepository.save(existingEvent);
-        return eventMapper.toResponse(updatedEvent);
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Venue not found with ID: " + request.getVenueId()));
+        event.setTitle(request.getTitle());
+        event.setDescription(request.getDescription());
+        event.setCategory(request.getCategory());
+        event.setEventDate(request.getEventDate());
+        event.setStartTime(request.getStartTime());
+        event.setEndTime(request.getEndTime());
+        event.setVenue(venue);
+        event.setStatus(request.getStatus());
+        return eventMapper.toResponse(eventRepository.save(event));
     }
 
     @Override
     @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "eventById", key = "#eventId"),
-        @CacheEvict(value = "events", allEntries = true)
-    })
     public void deleteEvent(Long eventId) {
-        Event event = eventRepository.findById(eventId)
+        Event event = eventRepository.findByIdForUpdate(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with ID: " + eventId));
         eventRepository.delete(event);
     }
@@ -134,13 +105,11 @@ public class EventServiceImpl implements EventService {
         if (!StringUtils.hasText(sortParam)) {
             return PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "eventDate"));
         }
-
         String[] parts = sortParam.split(",");
         String property = parts[0].trim();
-        Sort.Direction direction = (parts.length > 1 && parts[1].trim().equalsIgnoreCase("desc"))
+        Sort.Direction direction = parts.length > 1 && parts[1].trim().equalsIgnoreCase("desc")
                 ? Sort.Direction.DESC
                 : Sort.Direction.ASC;
-
         return PageRequest.of(page, size, Sort.by(direction, property));
     }
 }

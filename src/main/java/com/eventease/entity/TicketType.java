@@ -45,7 +45,7 @@ public class TicketType {
     @Column(name = "total_quantity", nullable = false)
     private Integer totalQuantity;
 
-    @Column(name = "available_quantity", nullable = false)
+    @Column(name = "available_quantity", nullable = false, insertable = false, updatable = false)
     private Integer availableQuantity;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

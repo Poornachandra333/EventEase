@@ -1,8 +1,9 @@
 package com.eventease.repository;
 
 import com.eventease.entity.TicketType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -17,11 +18,8 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
 
     Optional<TicketType> findByEventIdAndId(Long eventId, Long ticketTypeId);
 
-    @Modifying
-    @Query("UPDATE TicketType t SET t.availableQuantity = t.availableQuantity - :quantity WHERE t.id = :ticketTypeId AND t.availableQuantity >= :quantity")
-    int decreaseAvailableQuantity(@Param("ticketTypeId") Long ticketTypeId, @Param("quantity") int quantity);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from TicketType t where t.id = :ticketTypeId")
+    Optional<TicketType> findByIdForReservation(@Param("ticketTypeId") Long ticketTypeId);
 
-    @Modifying
-    @Query("UPDATE TicketType t SET t.availableQuantity = t.availableQuantity + :quantity WHERE t.id = :ticketTypeId AND (t.availableQuantity + :quantity) <= t.totalQuantity")
-    int restoreAvailableQuantity(@Param("ticketTypeId") Long ticketTypeId, @Param("quantity") int quantity);
 }

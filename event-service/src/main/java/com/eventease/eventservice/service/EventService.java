@@ -1,10 +1,10 @@
-package com.eventease.service;
+package com.eventease.eventservice.service;
 
-import com.eventease.dto.event.CreateEventRequest;
-import com.eventease.dto.event.EventResponse;
-import com.eventease.dto.event.EventSearchCriteria;
-import com.eventease.dto.event.EventSummaryResponse;
-import com.eventease.dto.event.UpdateEventRequest;
+import com.eventease.eventservice.dto.CreateEventRequest;
+import com.eventease.eventservice.dto.EventResponse;
+import com.eventease.eventservice.dto.EventSearchCriteria;
+import com.eventease.eventservice.dto.EventSummaryResponse;
+import com.eventease.eventservice.dto.UpdateEventRequest;
 import org.springframework.data.domain.Page;
 
 public interface EventService {
