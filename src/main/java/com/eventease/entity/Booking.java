@@ -32,6 +32,7 @@ import java.util.List;
     name = "bookings",
     indexes = {
         @Index(name = "idx_booking_ref", columnList = "booking_reference", unique = true),
+        @Index(name = "idx_booking_request_key", columnList = "request_key", unique = true),
         @Index(name = "idx_booking_user_id", columnList = "user_id")
     }
 )
@@ -48,6 +49,9 @@ public class Booking {
 
     @Column(name = "booking_reference", nullable = false, unique = true)
     private String bookingReference;
+
+    @Column(name = "request_key")
+    private String requestKey;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)

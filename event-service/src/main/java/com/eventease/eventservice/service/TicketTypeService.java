@@ -1,8 +1,8 @@
-package com.eventease.service;
+package com.eventease.eventservice.service;
 
-import com.eventease.dto.ticket.CreateTicketTypeRequest;
-import com.eventease.dto.ticket.TicketTypeResponse;
-import com.eventease.dto.ticket.UpdateTicketTypeRequest;
+import com.eventease.eventservice.dto.CreateTicketTypeRequest;
+import com.eventease.eventservice.dto.TicketTypeResponse;
+import com.eventease.eventservice.dto.UpdateTicketTypeRequest;
 
 import java.util.List;
 

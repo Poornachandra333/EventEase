@@ -1,9 +1,9 @@
-package com.eventease.controller;
+package com.eventease.eventservice.controller;
 
-import com.eventease.dto.ticket.CreateTicketTypeRequest;
-import com.eventease.dto.ticket.TicketTypeResponse;
-import com.eventease.dto.ticket.UpdateTicketTypeRequest;
-import com.eventease.service.TicketTypeService;
+import com.eventease.eventservice.dto.CreateTicketTypeRequest;
+import com.eventease.eventservice.dto.TicketTypeResponse;
+import com.eventease.eventservice.dto.UpdateTicketTypeRequest;
+import com.eventease.eventservice.service.TicketTypeService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,22 +32,20 @@ public class TicketTypeController {
     public ResponseEntity<TicketTypeResponse> createTicketType(
             @PathVariable Long eventId,
             @Valid @RequestBody CreateTicketTypeRequest request) {
-        TicketTypeResponse response = ticketTypeService.createTicketType(eventId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ticketTypeService.createTicketType(eventId, request));
     }
 
     @GetMapping("/events/{eventId}/ticket-types")
     public ResponseEntity<List<TicketTypeResponse>> getTicketTypesByEvent(@PathVariable Long eventId) {
-        List<TicketTypeResponse> response = ticketTypeService.getTicketTypesByEvent(eventId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ticketTypeService.getTicketTypesByEvent(eventId));
     }
 
     @PutMapping("/ticket-types/{ticketTypeId}")
     public ResponseEntity<TicketTypeResponse> updateTicketType(
             @PathVariable Long ticketTypeId,
             @Valid @RequestBody UpdateTicketTypeRequest request) {
-        TicketTypeResponse response = ticketTypeService.updateTicketType(ticketTypeId, request);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ticketTypeService.updateTicketType(ticketTypeId, request));
     }
 
     @DeleteMapping("/ticket-types/{ticketTypeId}")

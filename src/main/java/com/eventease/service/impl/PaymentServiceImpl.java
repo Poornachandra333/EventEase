@@ -20,7 +20,7 @@ import com.eventease.exception.ResourceNotFoundException;
 import com.eventease.mapper.BookingMapper;
 import com.eventease.repository.BookingRepository;
 import com.eventease.repository.PaymentRepository;
-import com.eventease.repository.TicketTypeRepository;
+import com.eventease.repository.TicketInventoryRepository;
 import com.eventease.repository.UserRepository;
 import com.eventease.service.PaymentGatewayService;
 import com.eventease.service.PaymentService;
@@ -44,7 +44,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
-    private final TicketTypeRepository ticketTypeRepository;
+    private final TicketInventoryRepository ticketInventoryRepository;
     private final PaymentGatewayService paymentGatewayService;
     private final BookingEventProducer bookingEventProducer;
     private final BookingMapper bookingMapper;
@@ -114,7 +114,7 @@ public class PaymentServiceImpl implements PaymentService {
             booking.setStatus(BookingStatus.CANCELLED);
             booking.setCancelledAt(LocalDateTime.now());
             booking.getItems().forEach(item ->
-                    ticketTypeRepository.restoreAvailableQuantity(item.getTicketType().getId(), item.getQuantity()));
+                    ticketInventoryRepository.release(item.getTicketType().getId(), item.getQuantity()));
             log.warn("Payment FAILED for booking: {} reason: {}", booking.getBookingReference(), payment.getFailureReason());
         }
 

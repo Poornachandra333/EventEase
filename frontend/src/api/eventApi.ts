@@ -1,4 +1,4 @@
-import api from './axios';
+import { eventApi as api } from './axios';
 import { Event, EventSummary, Page } from '../types';
 
 export const getEvents = async (params?: any): Promise<Page<EventSummary>> => {

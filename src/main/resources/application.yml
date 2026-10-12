@@ -23,9 +23,9 @@ spring:
   application:
     name: EventEase
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/eventease_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/${DB_NAME}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -64,6 +64,8 @@ spring:
         spring.json.trusted.packages: com.eventease.event
 
 app:
+  event-service:
+    url: ${EVENT_SERVICE_URL:http://localhost:8082}
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours (in milliseconds)
